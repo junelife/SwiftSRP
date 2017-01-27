@@ -21,16 +21,19 @@ class SwiftSRPTests: XCTestCase {
         super.tearDown()
     }
     
-    func testExample() {
-        // This is an example of a functional test case.
-        // Use XCTAssert and related functions to verify your tests produce the correct results.
-    }
-    
-    func testPerformanceExample() {
-        // This is an example of a performance test case.
-        self.measure {
-            // Put the code you want to measure the time of here.
+    func testSRP() {
+        guard
+            let verifier = SRPVerifier(password:"12345678"),
+            let user = SRPUser(password: "12345678"),
+            let a = user.startAuthentication(),
+            let (b, salt) = verifier.startVerification(a: a),
+            let m = user.processChallenge(b: b, salt: salt),
+            let hamk = verifier.verifySession(m: m),
+            user.verifySession(hamk: hamk)
+            else {
+                XCTFail("Verification failed")
+                return
         }
+        XCTAssertEqual(verifier.sessionKey, user.sessionKey)
     }
-    
 }
