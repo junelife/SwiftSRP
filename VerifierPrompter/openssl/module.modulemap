@@ -1,0 +1,5 @@
+module openssl {
+    header "openssl/srp.h"
+    header "openssl/bn.h"
+    export *
+}

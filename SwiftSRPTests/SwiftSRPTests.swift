@@ -25,15 +25,15 @@ class SwiftSRPTests: XCTestCase {
         guard
             let verifier = SRPVerifier(password:"12345678"),
             let user = SRPUser(password: "12345678"),
-            let a = user.startAuthentication(),
-            let (b, salt) = verifier.startVerification(a: a),
-            let m = user.processChallenge(b: b, salt: salt),
-            let hamk = verifier.verifySession(m: m),
-            user.verifySession(hamk: hamk)
+            let A = user.startAuthentication(),
+            let (B, salt) = verifier.startVerification(A: A),
+            let M1 = user.processChallenge(B: B, salt: salt),
+            let M2 = verifier.verifySession(M1: M1),
+            user.verifySession(M2: M2)
             else {
                 XCTFail("Verification failed")
                 return
         }
-        XCTAssertEqual(verifier.sessionKey, user.sessionKey)
+        XCTAssertEqual(verifier.K, user.K)
     }
 }

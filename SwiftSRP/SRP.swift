@@ -7,152 +7,328 @@
 //
 
 import Foundation
+import CommonCrypto
+import openssl
 
 public class SRPVerifier {
     
-    private let salt:Data
-    private let verificationKey:Data
-    private var ver:OpaquePointer?
+    private let s:UnsafeMutablePointer<BIGNUM>
+    private let v:UnsafeMutablePointer<BIGNUM>
+    private let gN:UnsafeMutablePointer<SRP_gN>
+    private var S:UnsafeMutablePointer<BIGNUM>?
+    public private(set) var K:Data? = nil
+    private var M1:Data? = nil
+    private var M2:Data? = nil
     
     public init?(password:String) {
-        var saltPtr:UnsafePointer<UInt8>? = nil
-        var saltLength:Int32 = 0
-        var verificationKeyPtr:UnsafePointer<UInt8>? = nil
-        var verificationKeyLength:Int32 = 0
-        srp_create_salted_verification_key(SRP_SHA256, SRP_NG_8192, "user", password, Int32(password.characters.count), &saltPtr, &saltLength, &verificationKeyPtr, &verificationKeyLength, nil, nil)
-        
-        guard let vPtr = verificationKeyPtr, let sPtr = saltPtr else {
+        var saltBN:UnsafeMutablePointer<BIGNUM>?
+        var verificationBN:UnsafeMutablePointer<BIGNUM>?
+        guard let gN = SRP_get_default_gN("8192") else {
             return nil
         }
-        verificationKey = Data(bytes:vPtr, count:Int(verificationKeyLength))
-        salt = Data(bytes:sPtr, count:Int(saltLength))
+        self.gN = gN
         
-        print("salt: \(salt.base64EncodedString()), verificationKey: \(verificationKey.base64EncodedString())")
+        let N = gN.pointee.N
+        let g = gN.pointee.g
+        SRP_create_verifier_BN("user", password, &saltBN, &verificationBN, N, g)
+        
+        guard let v = verificationBN, let s = saltBN else {
+            return nil
+        }
+        self.s = s
+        self.v = v
+        
+    }
+    
+    public var salt:String {
+        var saltData = Data(count: BN_num_bytes(s))
+        let _ = saltData.withUnsafeMutableBytes() { ptr in
+            BN_bn2bin(s, ptr)
+        }
+        return saltData.base64EncodedString()
     }
     
     deinit {
-        srp_verifier_delete(ver)
-    }
-    
-    public func startVerification(a:String) -> (b:String, salt:String)? {
-        guard let aData = Data(base64Encoded: a) else {
-            return nil
-        }
-        return aData.withUnsafeBytes { (aPtr:UnsafePointer<UInt8>) -> (b:String, salt:String)? in
-            return salt.withUnsafeBytes { (saltPtr:UnsafePointer<UInt8>) -> (b:String, salt:String)? in
-                return verificationKey.withUnsafeBytes { (verificationKeyPtr:UnsafePointer<UInt8>) -> (b:String, salt:String)? in
-                    
-                    var bPtr:UnsafePointer<UInt8>? = nil
-                    var bLength:Int32 = 0
-                    
-                    guard let ver = srp_verifier_new( SRP_SHA256, SRP_NG_8192, "user", saltPtr, Int32(salt.count), verificationKeyPtr, Int32(verificationKey.count),
-                                                      aPtr, Int32(aData.count), &bPtr, &bLength, nil, nil ),
-                    let solidBPtr = bPtr, bLength > 0 else {
-                                                        return nil
-                    }
-                    self.ver = ver
-                    return (b:Data(bytes:solidBPtr, count:Int(bLength)).base64EncodedString(), salt:salt.base64EncodedString())
-                }
-            }
+        BN_free(s)
+        BN_free(v)
+        if let S = self.S {
+            BN_free(S)
         }
     }
     
-    public func verifySession(m:String) -> String? {
-        guard let ver = self.ver else {
-            //Verification was not started correctly
-            return nil
-        }
-        guard let mData = Data(base64Encoded: m) else {
-            // Couldn't decode M
-            return nil
-        }
-        return mData.withUnsafeBytes { (mPtr:UnsafePointer<UInt8>) -> String? in
-            var hamkPtr:UnsafePointer<UInt8>? = nil
-            srp_verifier_verify_session(ver, mPtr, &hamkPtr)
-            guard let solidHamkPtr = hamkPtr else {
-                return nil
-            }
-            return Data(bytes:solidHamkPtr, count:mData.count).base64EncodedString()
-        }
-    }
-    
-    public var sessionKey:Data? {
-        guard let ver = ver else {
-            //Verification was not started correctly
+    public func startVerification(A A64:String) -> (B:String, s:String)? {
+        guard let aDecoded = Data(base64Encoded: A64) else {
             return nil
         }
         
-        var keyLength:Int32 = 0
-        guard let keyPtr = srp_verifier_get_session_key(ver, &keyLength), keyLength > 0 else {
-            //Couldn't fetch session key
+        
+        guard let A = aDecoded.withUnsafeBytes({ ptr in
+            return BN_bin2bn(ptr, Int32(aDecoded.count), nil)
+        }) else {
             return nil
         }
-        return Data(bytes: keyPtr, count:Int(keyLength))
+        defer {
+            BN_free(A)
+        }
+        
+        //        let AString = String(cString: BN_bn2dec(A))
+        //        print("A: \(AString)")
+        
+        guard let b = BN_new() else {
+            return nil
+        }
+        defer {
+            BN_free(b)
+        }
+        BN_rand(b, 256, -1, 0)
+        
+        guard SRP_Verify_A_mod_N(A, gN.pointee.N) != 0 else {
+            print("A mod N was zero, invalid A")
+            return nil
+        }
+        
+        guard let B = SRP_Calc_B(b, gN.pointee.N, gN.pointee.g, v) else {
+            return nil
+        }
+        defer {
+            BN_free(B)
+        }
+        //        let BString = String(cString: BN_bn2dec(B))
+        //        print("B: \(BString)")
+        
+        guard let u = SRP_Calc_u(A, B, gN.pointee.N) else {
+            return nil
+        }
+        defer {
+            BN_free(u)
+        }
+        guard let S = SRP_Calc_server_key(A, v, u, b, gN.pointee.N) else {
+            return nil
+        }
+        defer {
+            BN_free(S)
+        }
+        //        let SString = String(cString: BN_bn2dec(S))
+        //        print("S: \(SString)")
+        
+        let padLength = BN_num_bytes(gN.pointee.N)
+        
+        let AData = BN_bn2binpad(A, minLength: padLength)
+        let BData = BN_bn2binpad(B, minLength: padLength)
+        let SData = BN_bn2binpad(S, minLength: padLength)
+        
+        // Calculate M1
+        let ABSData = AData + BData + SData
+        var M1 = Data(count:Int(CC_SHA1_DIGEST_LENGTH))
+        let _ = ABSData.withUnsafeBytes() { absPtr in
+            M1.withUnsafeMutableBytes() { m1Ptr in
+                CC_SHA1(absPtr, UInt32(ABSData.count), m1Ptr)
+            }
+        }
+        self.M1 = M1
+        
+        // Calculate M2
+        let m1PadSize = padLength - M1.count
+        let padding = Data(count:m1PadSize)
+        let AM1SData = AData + padding + M1 + SData
+        var M2 = Data(count:Int(CC_SHA1_DIGEST_LENGTH))
+        let _ = AM1SData.withUnsafeBytes() { am1sPtr in
+            M2.withUnsafeMutableBytes() { m2Ptr in
+                CC_SHA1(am1sPtr, UInt32(AM1SData.count), m2Ptr)
+            }
+        }
+        self.M2 = M2
+        
+        // Calculate K
+        var K = Data(count:Int(CC_SHA1_DIGEST_LENGTH))
+        let _ = SData.withUnsafeBytes() { sPtr in
+            K.withUnsafeMutableBytes() { kPtr in
+                CC_SHA1(sPtr, UInt32(SData.count), kPtr)
+            }
+        }
+        self.K = K
+        
+        return (B: BData.base64EncodedString(), s: self.salt)
+        
+    }
+    
+    public func verifySession(M1 M164:String) -> String? {
+        guard let M1Data = Data(base64Encoded: M164) else {
+            // Couldn't decode M
+            return nil
+        }
+        guard M1Data == M1, let M2 = self.M2 else {
+            // M1 doesn't match, or M2 is not available.
+            return nil
+        }
+        return M2.base64EncodedString()
     }
 }
 
 public class SRPUser {
-    private let usr:OpaquePointer
+    private let g:UnsafeMutablePointer<BIGNUM>
+    private let N:UnsafeMutablePointer<BIGNUM>
+    private var A:UnsafeMutablePointer<BIGNUM>?
+    private var a:UnsafeMutablePointer<BIGNUM>?
+    private var S:UnsafeMutablePointer<BIGNUM>?
+    public private(set) var K:Data? = nil
+    private var M1:Data? = nil
+    private var M2:Data? = nil
+    private let password:String
+    
     public init?(password:String) {
-        guard let usr =  srp_user_new( SRP_SHA256, SRP_NG_8192, "user", password,
-                                       Int32(password.characters.count), nil, nil ) else {
-                                        return nil
+        self.password = password
+        guard let gN = SRP_get_default_gN("8192"), let N = gN.pointee.N, let g = gN.pointee.g else {
+            return nil
         }
-        
-        self.usr = usr
+        self.N = N
+        self.g = g
     }
     
     deinit {
-        srp_user_delete(usr)
+        if let a = self.a {
+            BN_free(a)
+        }
+        if let S = self.S {
+            BN_free(S)
+        }
     }
     
     public func startAuthentication() -> String? {
-        var aPtr:UnsafePointer<UInt8>? = nil
-        var aLength:Int32 = 0
-        var authUsernamePtr:UnsafePointer<Int8>? = nil
-        srp_user_start_authentication(usr, &authUsernamePtr, &aPtr, &aLength)
-        guard let solidAPtr = aPtr, aLength > 0 else {
+        guard let a = BN_new() else {
             return nil
         }
-        return Data(bytes:solidAPtr, count:Int(aLength)).base64EncodedString()
+        BN_rand(a, 256, -1, 0)
+        self.a = a
+        guard let A = SRP_Calc_A(a, N, g) else {
+            return nil
+        }
+        self.A = A
+        var AData = Data(count:BN_num_bytes(A))
+        let _ = AData.withUnsafeMutableBytes() { ptr in
+            BN_bn2bin(A, ptr)
+        }
+
+        return AData.base64EncodedString()
     }
-    
-    public func processChallenge(b:String, salt:String) -> String? {
-        var mPtr:UnsafePointer<UInt8>? = nil
-        var mLength:Int32 = 0
-        
-        guard let bData = Data(base64Encoded: b), let saltData = Data(base64Encoded:salt) else {
-            // Couldn't decode b and salt
+
+    public func processChallenge(B:String, salt:String) -> String? {
+        guard let saltData = Data(base64Encoded: salt), let BDecoded = Data(base64Encoded:B) else {
             return nil
         }
-        return bData.withUnsafeBytes { (bPtr:UnsafePointer<UInt8>) -> String? in
-            saltData.withUnsafeBytes { (saltPtr:UnsafePointer<UInt8>) -> String? in
-                srp_user_process_challenge(self.usr, saltPtr, Int32(saltData.count), bPtr, Int32(bData.count), &mPtr, &mLength)
-                guard let solidMPtr = mPtr, mLength > 0 else {
-                    return nil
-                }
-                return Data(bytes:solidMPtr, count:Int(mLength)).base64EncodedString()
+        
+        guard let s = saltData.withUnsafeBytes({ ptr in
+            return BN_bin2bn(ptr, Int32(saltData.count), nil)
+        }) else {
+            return nil
+        }
+        defer {
+            BN_free(s)
+        }
+        
+        guard let B = BDecoded.withUnsafeBytes({ ptr in
+            return BN_bin2bn(ptr, Int32(BDecoded.count), nil)
+        }) else {
+            return nil
+        }
+        defer {
+            BN_free(B)
+        }
+        guard SRP_Verify_B_mod_N(B, N) != 0 else {
+            print("B mod N was zero, invalid B")
+            return nil
+        }
+        
+        guard let x = SRP_Calc_x(s, "user", password) else {
+            return nil
+        }
+        defer {
+            BN_free(x)
+        }
+        
+        guard let u = SRP_Calc_u(A, B, N) else {
+            return nil
+        }
+        defer {
+            BN_free(u)
+        }
+        
+        guard let a = a, let S = SRP_Calc_client_key(N, B, g, x, a, u) else {
+            return nil
+        }
+        defer {
+            BN_free(S)
+        }
+        //        let SString = String(cString: BN_bn2dec(S))
+        //        print("S: \(SString)")
+        
+        let padLength = BN_num_bytes(N)
+        
+        guard let A = A else {
+            return nil
+        }
+        let APadded = BN_bn2binpad(A, minLength: padLength)
+        let BPadded = BN_bn2binpad(B, minLength: padLength)
+        let SPadded = BN_bn2binpad(S, minLength: padLength)
+        
+        // Calculate M1
+        let ABSData = APadded + BPadded + SPadded
+        var M1 = Data(count:Int(CC_SHA1_DIGEST_LENGTH))
+        let _ = ABSData.withUnsafeBytes() { absPtr in
+            M1.withUnsafeMutableBytes() { m1Ptr in
+                CC_SHA1(absPtr, UInt32(ABSData.count), m1Ptr)
             }
         }
+        self.M1 = M1
+        
+        // Calculate M2
+        let m1PadSize = padLength - M1.count
+        let padding = Data(count:m1PadSize)
+        let AM1SData = APadded + padding + M1 + SPadded
+        var M2 = Data(count:Int(CC_SHA1_DIGEST_LENGTH))
+        let _ = AM1SData.withUnsafeBytes() { am1sPtr in
+            M2.withUnsafeMutableBytes() { m2Ptr in
+                CC_SHA1(am1sPtr, UInt32(AM1SData.count), m2Ptr)
+            }
+        }
+        self.M2 = M2
+        
+        // Calculate K
+        var K = Data(count:Int(CC_SHA1_DIGEST_LENGTH))
+        let _ = SPadded.withUnsafeBytes() { sPtr in
+            K.withUnsafeMutableBytes() { kPtr in
+                CC_SHA1(sPtr, UInt32(SPadded.count), kPtr)
+            }
+        }
+        self.K = K
+        
+        return M1.base64EncodedString()
     }
     
-    public func verifySession(hamk:String) -> Bool {
-        guard let hamkData = Data(base64Encoded: hamk) else {
-            // Couldn't decode HAMK
+    public func verifySession(M2:String) -> Bool {
+        guard let M2Decoded = Data(base64Encoded:M2) else {
             return false
         }
-        hamkData.withUnsafeBytes { (hamkPtr:UnsafePointer<UInt8>) -> Void in
-            srp_user_verify_session(usr, hamkPtr)
-        }
-        return srp_user_is_authenticated(usr) != 0
+        return M2Decoded == self.M2
     }
-    
-    public var sessionKey:Data? {
-        var keyLength:Int32 = 0
-        guard let keyPtr = srp_user_get_session_key(usr, &keyLength), keyLength > 0 else {
-            //Couldn't fetch session key
-            return nil
-        }
-        return Data(bytes: keyPtr, count:Int(keyLength))
+}
+
+
+
+private func BN_bn2binpad(_ bn: UnsafeMutablePointer<BIGNUM>, minLength:Int) -> Data {
+    let bnLength = BN_num_bytes(bn)
+    var bnData = Data(count: bnLength)
+    let _ = bnData.withUnsafeMutableBytes() { ptr in
+        BN_bn2bin(bn, ptr)
     }
+    if bnLength < minLength {
+        let padding = Data(count:minLength - bnLength)
+        return padding + bnData
+    } else {
+        return bnData
+    }
+}
+
+private func BN_num_bytes(_ bn: UnsafeMutablePointer<BIGNUM>) -> Int {
+    return Int(BN_num_bits(bn) + 7) / 8
 }
