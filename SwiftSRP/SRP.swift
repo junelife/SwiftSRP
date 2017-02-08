@@ -48,6 +48,15 @@ public class SRPVerifier {
         return saltData.base64EncodedString()
     }
     
+    public var secret:String? {
+        guard let S = S else { return nil }
+        var secretData = Data(count: BN_num_bytes(S))
+        let _ = secretData.withUnsafeMutableBytes() { ptr in
+            BN_bn2bin(S, ptr)
+        }
+        return secretData.base64EncodedString()
+    }
+    
     deinit {
         BN_free(s)
         BN_free(v)
@@ -105,9 +114,7 @@ public class SRPVerifier {
         guard let S = SRP_Calc_server_key(A, v, u, b, gN.pointee.N) else {
             return nil
         }
-        defer {
-            BN_free(S)
-        }
+        self.S = S
         //        let SString = String(cString: BN_bn2dec(S))
         //        print("S: \(SString)")
         
@@ -154,10 +161,11 @@ public class SRPVerifier {
     
     public func verifySession(M1 M164:String) -> String? {
         guard let M1Data = Data(base64Encoded: M164) else {
-            // Couldn't decode M
+            printError("Couldn't decode M1: \(M164)")
             return nil
         }
         guard M1Data == M1, let M2 = self.M2 else {
+            printError("M1 doesn't match.  \(M164) != \(M1?.base64EncodedString())")
             // M1 doesn't match, or M2 is not available.
             return nil
         }
@@ -315,7 +323,7 @@ public class SRPUser {
 
 
 
-private func BN_bn2binpad(_ bn: UnsafeMutablePointer<BIGNUM>, minLength:Int) -> Data {
+func BN_bn2binpad(_ bn: UnsafeMutablePointer<BIGNUM>, minLength:Int) -> Data {
     let bnLength = BN_num_bytes(bn)
     var bnData = Data(count: bnLength)
     let _ = bnData.withUnsafeMutableBytes() { ptr in
@@ -329,6 +337,19 @@ private func BN_bn2binpad(_ bn: UnsafeMutablePointer<BIGNUM>, minLength:Int) -> 
     }
 }
 
-private func BN_num_bytes(_ bn: UnsafeMutablePointer<BIGNUM>) -> Int {
-    return Int(BN_num_bits(bn) + 7) / 8
+func BN_num_bytes(_ bn: UnsafeMutablePointer<BIGNUM>) -> Int {
+    return (Int(BN_num_bits(bn)) + 7) / 8
+}
+
+var standardError = FileHandle.standardError
+
+extension FileHandle : TextOutputStream {
+    public func write(_ string: String) {
+        guard let data = string.data(using: .utf8) else { return }
+        self.write(data)
+    }
+}
+
+func printError(_ msg:String) {
+    print(msg, to:&standardError)
 }
