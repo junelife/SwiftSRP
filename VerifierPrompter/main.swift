@@ -15,7 +15,6 @@ if CommandLine.arguments.count > 1 {
 }
 printError("VerifierPrompter \(password)")
 let verifier = SRPVerifier(password:password)!
-print("\(verifier.salt)")
 // print("A:")
 let A = readLine()!.trimmingCharacters(in: .whitespacesAndNewlines)
 // print("more A(optional):")
@@ -23,6 +22,7 @@ let A = readLine()!.trimmingCharacters(in: .whitespacesAndNewlines)
 printError("A: \(A)")
 let (B, _) = verifier.startVerification(A: A) ?? ("","")
 print("\(B)")
+print("\(verifier.salt)")
 printError("S: \(verifier.secret!)")
 // print("M1:")
 let M1 = readLine()!.trimmingCharacters(in: .whitespacesAndNewlines)
