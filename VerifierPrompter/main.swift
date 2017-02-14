@@ -23,7 +23,7 @@ printError("A: \(A)")
 let (B, _) = verifier.startVerification(A: A) ?? ("","")
 print("\(B)")
 print("\(verifier.salt)")
-printError("S: \(verifier.secret!)")
+printError("S: \(verifier.secret!.base64EncodedString())")
 // print("M1:")
 let M1 = readLine()!.trimmingCharacters(in: .whitespacesAndNewlines)
 printError("M1: \(M1)")
@@ -32,4 +32,3 @@ print("\(M2 ?? "")")
 guard M2 != nil else {
     exit(1)
 }
-printError("K: \(verifier.K!.base64EncodedString())")

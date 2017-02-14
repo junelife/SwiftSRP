@@ -36,7 +36,7 @@ class SwiftSRPTests: XCTestCase {
                 XCTFail("Verification failed")
                 return
         }
-        XCTAssertEqual(verifier.K, user.K)
+        XCTAssertEqual(verifier.secret, user.secret)
     }
     
     func testSpecificCase() {

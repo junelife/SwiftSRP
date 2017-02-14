@@ -16,7 +16,6 @@ public class SRPVerifier {
     private let v:UnsafeMutablePointer<BIGNUM>
     private let gN:UnsafeMutablePointer<SRP_gN>
     private var S:UnsafeMutablePointer<BIGNUM>?
-    public private(set) var K:Data? = nil
     private var M1:Data? = nil
     private var M2:Data? = nil
     
@@ -48,13 +47,13 @@ public class SRPVerifier {
         return saltData.base64EncodedString()
     }
     
-    public var secret:String? {
+    public var secret:Data? {
         guard let S = S else { return nil }
         var secretData = Data(count: BN_num_bytes(S))
         let _ = secretData.withUnsafeMutableBytes() { ptr in
             BN_bn2bin(S, ptr)
         }
-        return secretData.base64EncodedString()
+        return secretData
     }
     
     deinit {
@@ -146,15 +145,6 @@ public class SRPVerifier {
         }
         self.M2 = M2
         
-        // Calculate K
-        var K = Data(count:Int(CC_SHA1_DIGEST_LENGTH))
-        let _ = SData.withUnsafeBytes() { sPtr in
-            K.withUnsafeMutableBytes() { kPtr in
-                CC_SHA1(sPtr, UInt32(SData.count), kPtr)
-            }
-        }
-        self.K = K
-        
         return (B: BData.base64EncodedString(), s: self.salt)
         
     }
@@ -179,7 +169,6 @@ public class SRPUser {
     private var A:UnsafeMutablePointer<BIGNUM>?
     private var a:UnsafeMutablePointer<BIGNUM>?
     private var S:UnsafeMutablePointer<BIGNUM>?
-    public private(set) var K:Data? = nil
     private var M1:Data? = nil
     private var M2:Data? = nil
     private let password:String
@@ -196,6 +185,9 @@ public class SRPUser {
     deinit {
         if let a = self.a {
             BN_free(a)
+        }
+        if let A = self.A {
+            BN_free(A)
         }
         if let S = self.S {
             BN_free(S)
@@ -264,11 +256,7 @@ public class SRPUser {
         guard let a = a, let S = SRP_Calc_client_key(N, B, g, x, a, u) else {
             return nil
         }
-        defer {
-            BN_free(S)
-        }
-        //        let SString = String(cString: BN_bn2dec(S))
-        //        print("S: \(SString)")
+        self.S = S
         
         let padLength = BN_num_bytes(N)
         
@@ -301,15 +289,6 @@ public class SRPUser {
         }
         self.M2 = M2
         
-        // Calculate K
-        var K = Data(count:Int(CC_SHA1_DIGEST_LENGTH))
-        let _ = SPadded.withUnsafeBytes() { sPtr in
-            K.withUnsafeMutableBytes() { kPtr in
-                CC_SHA1(sPtr, UInt32(SPadded.count), kPtr)
-            }
-        }
-        self.K = K
-        
         return M1.base64EncodedString()
     }
     
@@ -318,6 +297,15 @@ public class SRPUser {
             return false
         }
         return M2Decoded == self.M2
+    }
+    
+    public var secret:Data? {
+        guard let S = S else { return nil }
+        var secretData = Data(count: BN_num_bytes(S))
+        let _ = secretData.withUnsafeMutableBytes() { ptr in
+            BN_bn2bin(S, ptr)
+        }
+        return secretData
     }
 }
 
