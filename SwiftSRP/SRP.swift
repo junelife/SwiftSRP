@@ -7,7 +7,7 @@
 //
 
 import Foundation
-import CommonCrypto
+import SwiftSRPCommonCrypto
 import openssl
 
 public class SRPVerifier {

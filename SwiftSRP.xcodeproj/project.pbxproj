@@ -116,6 +116,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		D82FF7291F02D41F00BA408F /* include.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = include.h; sourceTree = "<group>"; };
 		D842FEB61E450C8B00E000A5 /* libcrypto.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libcrypto.a; sourceTree = "<group>"; };
 		D842FEB71E450C8B00E000A5 /* module.modulemap */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = "sourcecode.module-map"; path = module.modulemap; sourceTree = "<group>"; };
 		D842FEB91E450C8B00E000A5 /* aes.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = aes.h; sourceTree = "<group>"; };
@@ -435,6 +436,7 @@
 			isa = PBXGroup;
 			children = (
 				D8F06B721E44171800DDD034 /* module.modulemap */,
+				D82FF7291F02D41F00BA408F /* include.h */,
 			);
 			path = CommonCrypto;
 			sourceTree = "<group>";

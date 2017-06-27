@@ -9,7 +9,7 @@
 import XCTest
 @testable import SwiftSRP
 import openssl
-import CommonCrypto
+import SwiftSRPCommonCrypto
 
 class SwiftSRPTests: XCTestCase {
     
