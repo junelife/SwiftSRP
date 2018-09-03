@@ -1,3 +1,0 @@
-module SwiftSRPCommonCrypto [system] {
-    header "include.h"
-}

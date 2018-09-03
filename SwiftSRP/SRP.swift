@@ -7,7 +7,6 @@
 //
 
 import Foundation
-import SwiftSRPCommonCrypto
 import openssl
 
 public class SRPVerifier {
@@ -155,7 +154,7 @@ public class SRPVerifier {
             return nil
         }
         guard M1Data == M1, let M2 = self.M2 else {
-            printError("M1 doesn't match.  \(M164) != \(M1?.base64EncodedString())")
+            printError("M1 doesn't match.  \(M164) != \(M1?.base64EncodedString() ?? "")")
             // M1 doesn't match, or M2 is not available.
             return nil
         }
