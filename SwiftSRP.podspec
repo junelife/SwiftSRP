@@ -5,7 +5,7 @@ s.summary = 'SwiftSRP provides a Secure Remote Password implementation in Swift.
 s.homepage = 'https://github.com/junelife/SwiftSRP'
 s.authors = { 'Joseph Ross' => '' }
 s.source = { :git => 'https://github.com/junelife/SwiftSRP',
-             :tag => '0.7.0' }
+             :branch => 'podspec' }
 
 s.ios.deployment_target = '10.0'
 
