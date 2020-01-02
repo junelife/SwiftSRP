@@ -820,7 +820,6 @@
 				SDKROOT = macosx;
 				SWIFT_INCLUDE_PATHS = "$(SRCROOT)/SwiftSRP/CommonCrypto $(SRCROOT)/VerifierPrompter/openssl";
 				SWIFT_OBJC_BRIDGING_HEADER = "VerifierPrompter/VerifierPrompter-Bridging-Header.h";
-				SWIFT_VERSION = 3.0;
 			};
 			name = Debug;
 		};
@@ -837,7 +836,6 @@
 				SDKROOT = macosx;
 				SWIFT_INCLUDE_PATHS = "$(SRCROOT)/SwiftSRP/CommonCrypto $(SRCROOT)/VerifierPrompter/openssl";
 				SWIFT_OBJC_BRIDGING_HEADER = "VerifierPrompter/VerifierPrompter-Bridging-Header.h";
-				SWIFT_VERSION = 3.0;
 			};
 			name = Release;
 		};
@@ -896,6 +894,7 @@
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VERSIONING_SYSTEM = "apple-generic";
 				VERSION_INFO_PREFIX = "";
@@ -949,6 +948,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = iphoneos;
 				SWIFT_OPTIMIZATION_LEVEL = "-Owholemodule";
+				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VALIDATE_PRODUCT = YES;
 				VERSIONING_SYSTEM = "apple-generic";
@@ -977,7 +977,6 @@
 				SKIP_INSTALL = YES;
 				SWIFT_INCLUDE_PATHS = "$(SRCROOT)/SwiftSRP/CommonCrypto $(SRCROOT)/SwiftSRP/openssl";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-				SWIFT_VERSION = 5.0;
 			};
 			name = Debug;
 		};
@@ -1001,7 +1000,6 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_INCLUDE_PATHS = "$(SRCROOT)/SwiftSRP/CommonCrypto $(SRCROOT)/SwiftSRP/openssl";
-				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
 		};
@@ -1016,7 +1014,6 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_INCLUDE_PATHS = "$(SRCROOT)/SwiftSRP/CommonCrypto $(SRCROOT)/SwiftSRP/openssl";
 				SWIFT_OBJC_BRIDGING_HEADER = SwiftSRP/SwiftSRP.h;
-				SWIFT_VERSION = 5.0;
 			};
 			name = Debug;
 		};
@@ -1031,7 +1028,6 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_INCLUDE_PATHS = "$(SRCROOT)/SwiftSRP/CommonCrypto $(SRCROOT)/SwiftSRP/openssl";
 				SWIFT_OBJC_BRIDGING_HEADER = SwiftSRP/SwiftSRP.h;
-				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
 		};
