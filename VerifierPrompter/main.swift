@@ -14,7 +14,7 @@ if CommandLine.arguments.count > 1 {
     password = CommandLine.arguments[1]
 }
 printError("VerifierPrompter \(password)")
-let verifier = SRPVerifier(password:password)!
+let verifier = JuneSrpVerifier(password:password)!
 // print("A:")
 let A = readLine()!.trimmingCharacters(in: .whitespacesAndNewlines)
 // print("more A(optional):")
