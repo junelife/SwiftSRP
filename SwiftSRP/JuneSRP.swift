@@ -87,7 +87,7 @@ public class JuneSrpVerifier {
         let M2 = Data(M2Digest)
         self.M2 = M2
         
-        guard M1Data == M1, let M2 = self.M2 else {
+        guard M1Data == M1 else {
             assertionFailure("M1 doesn't match.  \(M164) != \(M1.base64EncodedString())")
             // M1 doesn't match, or M2 is not available.
             return nil
