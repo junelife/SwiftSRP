@@ -14,6 +14,8 @@
 		D8689DF4263648BB008D9ACA /* SRP in Frameworks */ = {isa = PBXBuildFile; productRef = D8689DF3263648BB008D9ACA /* SRP */; };
 		D8689DF6263648D6008D9ACA /* JuneSRP.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8689DF5263648D6008D9ACA /* JuneSRP.swift */; };
 		D882A0A31E3AD3B100987825 /* SRP.swift in Sources */ = {isa = PBXBuildFile; fileRef = D882A0A21E3AD3B100987825 /* SRP.swift */; };
+		D8D1282A26368F8E00663F64 /* JuneSRP.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8689DF5263648D6008D9ACA /* JuneSRP.swift */; };
+		D8D1282C26368FA100663F64 /* SRP in Frameworks */ = {isa = PBXBuildFile; productRef = D8D1282B26368FA100663F64 /* SRP */; };
 		D8F06BC21E44172000DDD034 /* libcrypto.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D8F06B741E44172000DDD034 /* libcrypto.a */; };
 		D8F06BC31E44172000DDD034 /* aes.h in Headers */ = {isa = PBXBuildFile; fileRef = D8F06B771E44172000DDD034 /* aes.h */; };
 		D8F06BC41E44172000DDD034 /* asn1.h in Headers */ = {isa = PBXBuildFile; fileRef = D8F06B781E44172000DDD034 /* asn1.h */; };
@@ -296,6 +298,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D8D1282C26368FA100663F64 /* SRP in Frameworks */,
 				D842FF051E450DC600E000A5 /* libcrypto.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -672,6 +675,9 @@
 			dependencies = (
 			);
 			name = VerifierPrompter;
+			packageProductDependencies = (
+				D8D1282B26368FA100663F64 /* SRP */,
+			);
 			productName = VerifierPrompter;
 			productReference = D85DB4371E3D2023004E1915 /* VerifierPrompter */;
 			productType = "com.apple.product-type.tool";
@@ -788,6 +794,7 @@
 			files = (
 				D85DB43A1E3D2023004E1915 /* main.swift in Sources */,
 				D842FEB41E450BA500E000A5 /* SRP.swift in Sources */,
+				D8D1282A26368F8E00663F64 /* JuneSRP.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1116,6 +1123,11 @@
 
 /* Begin XCSwiftPackageProductDependency section */
 		D8689DF3263648BB008D9ACA /* SRP */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D8689DF2263648BB008D9ACA /* XCRemoteSwiftPackageReference "swift-srp" */;
+			productName = SRP;
+		};
+		D8D1282B26368FA100663F64 /* SRP */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = D8689DF2263648BB008D9ACA /* XCRemoteSwiftPackageReference "swift-srp" */;
 			productName = SRP;

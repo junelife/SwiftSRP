@@ -15,7 +15,7 @@ public class JuneSrpVerifier {
     private let server: SRPServer<Insecure.SHA1>
     private let serverKeys: SRPKeyPair
     
-    private let salt:Data
+    public let salt:Data
     private let verifier: SRPKey
     
     public private(set) var secret:Data? = nil
