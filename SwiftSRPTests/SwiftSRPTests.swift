@@ -9,6 +9,8 @@
 import XCTest
 @testable import SwiftSRP
 import openssl
+import SRP
+import CryptoKit
 
 class SwiftSRPTests: XCTestCase {
     
@@ -28,14 +30,98 @@ class SwiftSRPTests: XCTestCase {
             let user = SRPUser(password: "12345678"),
             let A = user.startAuthentication(),
             let (B, salt) = verifier.startVerification(A: A),
-            let M1 = user.processChallenge(B: B, salt: salt),
+            let M1 = user.processChallenge(B: B, salt: salt)
+            else {
+                XCTFail("Secret calculation failed")
+                return
+        }
+        
+        XCTAssertEqual(verifier.secret, user.secret)
+        
+        guard
             let M2 = verifier.verifySession(M1: M1),
             user.verifySession(M2: M2)
             else {
                 XCTFail("Verification failed")
                 return
         }
+    }
+    
+    func testInteropJuneSrpVerifier() {
+        guard
+            let verifier = JuneSrpVerifier(password:"12345678"),
+            let user = SRPUser(password: "12345678"),
+            let A = user.startAuthentication(),
+            let (B, salt) = verifier.startVerification(A: A),
+            let M1 = user.processChallenge(B: B, salt: salt)
+            else {
+                XCTFail("Secret calculation failed")
+                return
+        }
+        
         XCTAssertEqual(verifier.secret, user.secret)
+        
+        guard
+            let M2 = verifier.verifySession(M1: M1),
+            user.verifySession(M2: M2)
+            else {
+                XCTFail("Verification failed")
+                return
+        }
+    }
+    
+    
+    func testFowler() {
+        let username = "user"
+        let password = "12345678"
+        
+        let configuration = SRPConfiguration<Insecure.SHA1>(.N8192)
+        
+        let client = SRPClient(configuration: configuration)
+        let (salt, verifier) = client.generateSaltAndVerifier(username: username, password: password)
+        
+        let clientKeys = client.generateKeys()
+        let clientPublicKey = clientKeys.public
+        
+        let server = SRPServer(configuration: configuration)
+        let serverKeys = server.generateKeys(verifier: verifier)
+        let serverPublicKey = serverKeys.public
+        
+        let clientSharedSecret = try! client.calculateSharedSecret(
+            username: username,
+            password: password,
+            salt: salt,
+            clientKeys: clientKeys,
+            serverPublicKey: serverPublicKey
+        )
+        let clientProof = client.calculateClientProof(
+            username: username,
+            salt: salt,
+            clientPublicKey: clientKeys.public,
+            serverPublicKey: serverPublicKey,
+            sharedSecret: clientSharedSecret
+        )
+        
+        let serverSharedSecret = try! server.calculateSharedSecret(
+            clientPublicKey: clientPublicKey,
+            serverKeys: serverKeys,
+            verifier: verifier
+        )
+        let serverProof = try! server.verifyClientProof(
+            proof: clientProof,
+            username: username,
+            salt: salt,
+            clientPublicKey: clientPublicKey,
+            serverPublicKey: serverKeys.public,
+            sharedSecret: serverSharedSecret
+        )
+        
+        try! client.verifyServerProof(
+            serverProof: serverProof,
+            clientProof: clientProof,
+            clientKeys: clientKeys,
+            sharedSecret: clientSharedSecret
+        )
     }
     
     func testSpecificCase() {
