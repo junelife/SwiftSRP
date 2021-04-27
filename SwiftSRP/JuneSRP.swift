@@ -61,7 +61,12 @@ public class JuneSrpVerifier {
     }
     
     public func verifySession(M1 M164:String) -> String? {
-        guard let AData = AData, let BData = BData, let SData = secret else {
+        let paddedLength = server.configuration.N.data.count
+        
+        guard let AData = AData?.rightPaddedTo(paddedLength),
+              let BData = BData?.rightPaddedTo(paddedLength),
+              let SData = secret?.rightPaddedTo(paddedLength) else
+        {
             assertionFailure("Not ready to verify session")
             return nil
         }
@@ -71,8 +76,6 @@ public class JuneSrpVerifier {
             return nil
         }
         
-        let paddedLength = server.configuration.N.data.count
-        
         // Calculate M1
         let ABSData = AData + BData + SData
         let M1Digest = Insecure.SHA1.hash(data: ABSData)
@@ -81,8 +84,8 @@ public class JuneSrpVerifier {
         
         
         // Calculate M2
-        let padding = Data(count:paddedLength - M1.count)
-        let AM1SData = AData + padding + M1 + SData
+        let M1padded = M1.rightPaddedTo(paddedLength)
+        let AM1SData = AData + M1padded + SData
         let M2Digest = Insecure.SHA1.hash(data: AM1SData)
         let M2 = Data(M2Digest)
         self.M2 = M2
@@ -94,5 +97,11 @@ public class JuneSrpVerifier {
         }
         return M2.base64EncodedString()
         
+    }
+}
+
+fileprivate extension Data {
+    func rightPaddedTo(_ count: Int) -> Data {
+        Data(count: count - self.count) + self
     }
 }
